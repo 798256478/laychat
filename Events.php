@@ -56,7 +56,7 @@ class Events
                         'avatar'   => $_SESSION['avatar'],
                         'id'       => $type === 'friend' ? $client_id : $to_id,
                         'type'     => $type,
-                        'content'  => $message['data']['mine']['content'],
+                        'content'  => htmlspecialchars($message['data']['mine']['content']),
                         'timestamp'=> time()*1000,
                     )
                );
@@ -67,6 +67,8 @@ class Events
                    // 群聊
                    Gateway::sendToGroup($to_id, json_encode($chat_message), $client_id);
                }
+               return;
+           case 'ping':
                return;
            default:
                echo "unknown message $data";
