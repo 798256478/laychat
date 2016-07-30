@@ -15,19 +15,25 @@ class Events
     */
    public static function onMessage($client_id, $data) {
        $message = json_decode($data, true);
-       switch($message['type']) {
+       $message_type = $message['type'];
+       switch($message_type) {
            case 'init':
+               // uid
+               $uid = $message['id'];
                // 设置session
                $_SESSION = array(
                    'username' => $message['username'],
                    'avatar'   => $message['avatar'],
-                   'id'       => $client_id,
+                   'id'       => $uid,
                    'sign'     => $message['sign']
                );
-               // 获得了client_id，通知当前客户端初始化
+               // 将当前链接与uid绑定
+               Gateway::bindUid($client_id, $uid);
+
+               // 通知当前客户端初始化
                $init_message = array(
                    'message_type' => 'init',
-                   'client_id'    => $client_id,
+                   'id'           => $uid,
                );
                Gateway::sendToClient($client_id, json_encode($init_message));
 
@@ -36,7 +42,7 @@ class Events
                    'type'     => 'friend',
                    'username' => $message['username'],
                    'avatar'   => $message['avatar'],
-                   'id'       => $client_id,
+                   'id'       => $uid,
                    'sign'     => $message['sign'],
                    'groupid'  => 1
                ));
@@ -49,24 +55,35 @@ class Events
                // 聊天消息
                $type = $message['data']['to']['type'];
                $to_id = $message['data']['to']['id'];
+               $uid = $_SESSION['id'];
                $chat_message = array(
                     'message_type' => 'chatMessage',
                     'data' => array(
                         'username' => $_SESSION['username'],
                         'avatar'   => $_SESSION['avatar'],
-                        'id'       => $type === 'friend' ? $client_id : $to_id,
+                        'id'       => $type === 'friend' ? $uid : $to_id,
                         'type'     => $type,
                         'content'  => htmlspecialchars($message['data']['mine']['content']),
                         'timestamp'=> time()*1000,
                     )
                );
-               if($type === 'friend'){
+               switch ($type) {
                    // 私聊
-                   Gateway::sendToClient($to_id, json_encode($chat_message));
-               } else {
+                   case 'friend':
+                       return Gateway::sendToUid($to_id, json_encode($chat_message));
                    // 群聊
-                   Gateway::sendToGroup($to_id, json_encode($chat_message), $client_id);
+                   case 'group':
+                       return Gateway::sendToGroup($to_id, json_encode($chat_message), $client_id);
                }
+               return;
+           case 'hide':
+           case 'online':
+               $status_message = array(
+                   'message_type' => $message_type,
+                   'id'           => $_SESSION['id'],
+               );
+               $_SESSION['online'] = $message_type;
+               Gateway::sendToAll(json_encode($status_message));
                return;
            case 'ping':
                return;
@@ -82,7 +99,7 @@ class Events
    public static function onClose($client_id) {
        $logout_message = array(
            'message_type' => 'logout',
-           'id'   => $client_id
+           'id'           => $_SESSION['id']
        );
        Gateway::sendToAll(json_encode($logout_message));
    }
