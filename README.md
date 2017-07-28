@@ -1,4 +1,4 @@
-#本项目已经停止在github上更新
+# 本项目已经停止在github上更新
 
 # laychat
 [layim](http://layim.layui.com/) + [worerkman](http://www.workerman.net) 实现的聊天室，支持群聊、私聊、发表情、发图片、发文件、历史消息、<br>
